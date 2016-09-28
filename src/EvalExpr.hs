@@ -3,15 +3,13 @@ module EvalExpr where
 
 import           Control.Monad       (join)
 import           Control.Monad.Trans (MonadIO, liftIO)
-import           Debugger
-import           DynFlags
+import           Debugger            (showTerm)
+import           DynFlags            (ExtensionFlag (..), PkgConfRef (..),
+                                      xopt_set)
 import           GHC
 import           GHC.Paths           (libdir)
-import           Name                (getOccString)
-import           Outputable
-import           Packages
-import           TyCon               (tyConName)
-import           TypeRep             (Type (..))
+import           Outputable          (neverQualify, ppr, showSDocForUser)
+import           Packages            (initPackages)
 
 
 data EvalInput = EvalInput
@@ -22,10 +20,10 @@ data EvalInput = EvalInput
   deriving (Show)
 
 
-data EvalResult = EvalResult
+data EvalResult a = EvalResult
   { resultName  :: String
   , resultType  :: String
-  , resultValue :: String
+  , resultValue :: a
   }
   deriving (Show)
 
@@ -40,7 +38,7 @@ addPkgDbs fps = do
   return ()
 
 
-evalExpr :: [EvalInput] -> IO [EvalResult]
+evalExpr :: Read a => [EvalInput] -> IO [EvalResult a]
 evalExpr exprs =
   GHC.runGhc (Just libdir) $ do
     addPkgDbs
@@ -58,10 +56,14 @@ evalExpr exprs =
     join <$> mapM evalOne exprs
 
 
-evalOne :: GhcMonad m => EvalInput -> m [EvalResult]
+evalOne :: (Read a, GhcMonad m) => EvalInput -> m [EvalResult a]
 evalOne EvalInput { inputModule, inputName, inputExpr } = do
-  setContext $
-    map (IIDecl . simpleImportDecl . mkModuleName) ["Prelude", inputModule]
+  setContext $ map (IIDecl . simpleImportDecl . mkModuleName)
+    [ "Prelude"
+    , "Text.Pandoc"
+    , "Text.Printf"
+    , inputModule
+    ]
   let stmt = "let " ++ inputName ++ " = (" ++ inputExpr ++ ")"
   rr <- runStmt stmt RunToCompletion
   case rr of
@@ -70,25 +72,18 @@ evalOne EvalInput { inputModule, inputName, inputExpr } = do
     _              -> fail "unknown error"
 
 
-showNS :: GhcMonad m => [Name] -> m [EvalResult]
+showNS :: (Read a, GhcMonad m) => [Name] -> m [EvalResult a]
 showNS =
   mapM $ \n -> do
     df <- getSessionDynFlags
     Just (AnId aid) <- lookupName n
     evalDoc <- showTerm =<< obtainTermFromId maxBound True aid
     let ty = idType aid
-    let value = pp df evalDoc
     return EvalResult
       { resultName = pp df (ppr n)
       , resultType = pp df (ppr ty)
-      , resultValue =
-          if isStringTy ty
-            then read value
-            else value
+      , resultValue = read $ pp df evalDoc
       }
 
   where
     pp df = showSDocForUser df neverQualify
-
-    isStringTy (TyConApp tycon _) = (getOccString . tyConName) tycon == "String"
-    isStringTy _                  = False

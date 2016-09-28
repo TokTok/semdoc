@@ -27,11 +27,15 @@ readerOpts = Pandoc.def
 extractExprsInline :: Inline -> CMS.State ([EvalInput], String) Inline
 extractExprsInline i =
   case i of
-    RawInline (Format "latex") ('\\':'s':'h':'o':'w':'{':expr) -> do
+    RawInline (Format "latex") ('\\':'s':'h':'o':'w':'{':expr) -> add expr
+    Code ("", [], []) ('\\':'s':'h':'o':'w':'{':expr)          -> add expr
+    _                                                          -> return i
+
+  where
+    add :: String -> CMS.State ([EvalInput], String) Inline
+    add expr = do
       (inputs, modName) <- CMS.get
       CMS.put (EvalInput modName "it" (init expr) : inputs, modName)
-      return i
-    _ ->
       return i
 
 
@@ -46,27 +50,32 @@ extractExprs i =
           return i
         _ ->
           return i
-    CodeBlock {} -> return i
-    Plain  {} -> walkM extractExprsInline i
-    Para   {} -> walkM extractExprsInline i
-    Header {} -> walkM extractExprsInline i
-    BulletList {} -> return i
+    CodeBlock   {} -> return i
+    BulletList  {} -> return i
     OrderedList {} -> return i
-    Table {} -> return i
-    _ -> error $ groom i
+    Table       {} -> return i
+    Plain       {} -> walkM extractExprsInline i
+    Para        {} -> walkM extractExprsInline i
+    Header      {} -> walkM extractExprsInline i
+    _              -> error $ groom i
 
 
-replaceExprs :: Inline -> CMS.State [EvalResult] Inline
-replaceExprs = \case
-  RawInline (Format "latex") ('\\':'s':'h':'o':'w':'{':_) -> do
-    results <- CMS.get
-    case results of
-      [] -> fail "insufficient results"
-      r:rs -> do
-        CMS.put rs
-        return $ Str $ resultValue r
-  i -> return i
+doReplace :: CMS.State [EvalResult a] a
+doReplace = do
+  results <- CMS.get
+  case results of
+    [] -> fail "insufficient results"
+    r:rs -> do
+      CMS.put rs
+      return $ resultValue r
 
+
+replaceExprs :: Inline -> CMS.State [EvalResult Inline] Inline
+replaceExprs i =
+  case i of
+    RawInline (Format "latex") ('\\':'s':'h':'o':'w':'{':_) -> doReplace
+    Code ("", [], []) ('\\':'s':'h':'o':'w':'{':_)          -> doReplace
+    _                                                       -> return i
 
 eraseCodeBlocks :: Block -> Block
 eraseCodeBlocks (CodeBlock ("", ["sourceCode", "literate", "haskell"], []) _) =
@@ -114,6 +123,7 @@ readMarkdown =
 processDoc :: Pandoc.Pandoc -> IO String
 processDoc doc@(Pandoc.Pandoc _ parsed) = do
   putStrLn $ "[=] processing " ++ show (length parsed) ++ " toplevel blocks"
+  putStrLn $ groom parsed
   let exprs = reverse . fst . snd . CMS.runState (walkM extractExprs doc) $ ([], "Prelude")
   putStrLn $ "[=] evaluating " ++ show (length exprs) ++ " expressions"
   putStrLn $ groom exprs
@@ -125,7 +135,7 @@ processDoc doc@(Pandoc.Pandoc _ parsed) = do
       let withoutCode = walk eraseCodeBlocks evaluated in
       return $ writeMarkdown withoutCode
     _ ->
-      fail $ groom remaining
+      fail $ "extra results: " ++ groom remaining
 
 
 processFile :: FilePath -> IO String
