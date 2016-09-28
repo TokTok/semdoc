@@ -3,12 +3,12 @@ module Text.Semdoc.EvalExpr where
 
 import           Control.Applicative  ((<$>))
 import           Control.Monad        (join)
-import           Control.Monad.Trans  (MonadIO, liftIO)
 import           Debugger             (showTerm)
 import           DynFlags             (ExtensionFlag (..), PkgConfRef (..),
                                        xopt_set)
 import           GHC
 import           GHC.Paths            (libdir)
+import           MonadUtils
 import           Outputable           (neverQualify, showSDocForUser)
 import           Packages             (initPackages)
 import           System.FilePath.Glob (glob)
@@ -21,7 +21,7 @@ data EvalInput a = EvalInput
   deriving (Show)
 
 
-addPkgDbs :: (MonadIO m, GhcMonad m) => [FilePath] -> m ()
+addPkgDbs :: GhcMonad m => [FilePath] -> m ()
 addPkgDbs fps = do
   dfs <- getSessionDynFlags
   let pkgs = map PkgConfFile fps
