@@ -1,29 +1,21 @@
 {-# LANGUAGE NamedFieldPuns #-}
 module EvalExpr where
 
-import           Control.Monad       (join)
-import           Control.Monad.Trans (MonadIO, liftIO)
-import           Debugger            (showTerm)
-import           DynFlags            (ExtensionFlag (..), PkgConfRef (..),
-                                      xopt_set)
+import           Control.Monad        (join)
+import           Control.Monad.Trans  (MonadIO, liftIO)
+import           Debugger             (showTerm)
+import           DynFlags             (ExtensionFlag (..), PkgConfRef (..),
+                                       xopt_set)
 import           GHC
-import           GHC.Paths           (libdir)
-import           Outputable          (neverQualify, ppr, showSDocForUser)
-import           Packages            (initPackages)
+import           GHC.Paths            (libdir)
+import           Outputable           (neverQualify, showSDocForUser)
+import           Packages             (initPackages)
+import           System.FilePath.Glob (glob)
 
 
 data EvalInput = EvalInput
   { inputModule :: String
-  , inputName   :: String
-  , inputExpr   :: String
-  }
-  deriving (Show)
-
-
-data EvalResult a = EvalResult
-  { resultName  :: String
-  , resultType  :: String
-  , resultValue :: a
+  , inputStmts  :: String
   }
   deriving (Show)
 
@@ -38,13 +30,15 @@ addPkgDbs fps = do
   return ()
 
 
-evalExpr :: Read a => [EvalInput] -> IO [EvalResult a]
-evalExpr exprs =
+evalExpr :: Read a => [EvalInput] -> IO [a]
+evalExpr exprs = do
+  pkgDbs <- join <$> mapM glob
+    [ "dist/package.conf.inplace"
+    , ".cabal-sandbox/*-packages.conf.d"
+    , "../.cabal-sandbox/*-packages.conf.d"
+    ]
   GHC.runGhc (Just libdir) $ do
-    addPkgDbs
-      [ "dist/package.conf.inplace"
-      , "../.cabal-sandbox/x86_64-osx-ghc-7.10.3-packages.conf.d"
-      ]
+    addPkgDbs pkgDbs
     dflags <- getSessionDynFlags
     _ <- setSessionDynFlags $ foldl xopt_set dflags
       { hscTarget = HscInterpreted
@@ -53,37 +47,28 @@ evalExpr exprs =
       } [Opt_ImplicitPrelude]
 
     _ <- load LoadAllTargets
-    join <$> mapM evalOne exprs
+    mapM evalOne exprs
 
 
-evalOne :: (Read a, GhcMonad m) => EvalInput -> m [EvalResult a]
-evalOne EvalInput { inputModule, inputName, inputExpr } = do
+evalOne :: (Read a, GhcMonad m) => EvalInput -> m a
+evalOne EvalInput { inputModule, inputStmts } = do
   setContext $ map (IIDecl . simpleImportDecl . mkModuleName)
     [ "Prelude"
     , "Text.Pandoc"
     , "Text.Printf"
     , inputModule
     ]
-  let stmt = "let " ++ inputName ++ " = (" ++ inputExpr ++ ")"
-  rr <- runStmt stmt RunToCompletion
-  case rr of
-    RunOk ns       -> showNS ns
-    RunException e -> fail $ show e
-    _              -> fail "unknown error"
+  ns <- runDecls inputStmts
+  case ns of
+    n:_ -> getResult n
+    _   -> fail "no declarations found"
 
 
-showNS :: (Read a, GhcMonad m) => [Name] -> m [EvalResult a]
-showNS =
-  mapM $ \n -> do
-    df <- getSessionDynFlags
-    Just (AnId aid) <- lookupName n
-    evalDoc <- showTerm =<< obtainTermFromId maxBound True aid
-    let ty = idType aid
-    return EvalResult
-      { resultName = pp df (ppr n)
-      , resultType = pp df (ppr ty)
-      , resultValue = read $ pp df evalDoc
-      }
+getResult :: (Read a, GhcMonad m) => Name -> m a
+getResult n = do
+  df <- getSessionDynFlags
+  Just (AnId aid) <- lookupName n
+  fmap (read . pp df) $ showTerm =<< obtainTermFromId maxBound True aid
 
   where
     pp df = showSDocForUser df neverQualify

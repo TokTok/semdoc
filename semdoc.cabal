@@ -16,6 +16,7 @@ executable semdoc
       -Wall
   build-depends:
       base            >= 4 && < 5
+    , Glob
     , containers
     , ghc             == 7.10.3
     , ghc-paths

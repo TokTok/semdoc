@@ -13,8 +13,7 @@ import           Text.Pandoc.Readers.LaTeX  (handleIncludes)
 import           Text.Pandoc.Walk           (walk, walkM)
 import           Text.Regex.TDFA            ((=~))
 
-import           EvalExpr                   (EvalInput (EvalInput),
-                                             EvalResult (resultValue), evalExpr)
+import           EvalExpr                   (EvalInput (EvalInput), evalExpr)
 
 
 readerOpts :: Pandoc.ReaderOptions
@@ -35,7 +34,7 @@ extractExprsInline i =
     add :: String -> CMS.State ([EvalInput], String) Inline
     add expr = do
       (inputs, modName) <- CMS.get
-      CMS.put (EvalInput modName "it" (init expr) : inputs, modName)
+      CMS.put (EvalInput modName ("it = " ++ init expr) : inputs, modName)
       return i
 
 
@@ -60,17 +59,17 @@ extractExprs i =
     _              -> error $ groom i
 
 
-doReplace :: CMS.State [EvalResult a] a
+doReplace :: CMS.State [a] a
 doReplace = do
   results <- CMS.get
   case results of
     [] -> fail "insufficient results"
     r:rs -> do
       CMS.put rs
-      return $ resultValue r
+      return r
 
 
-replaceExprs :: Inline -> CMS.State [EvalResult Inline] Inline
+replaceExprs :: Inline -> CMS.State [Inline] Inline
 replaceExprs i =
   case i of
     RawInline (Format "latex") ('\\':'s':'h':'o':'w':'{':_) -> doReplace
