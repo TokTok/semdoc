@@ -1,5 +1,6 @@
 module Text.Semdoc.IO where
 
+import           Control.Applicative       ((<$>))
 import           Text.Groom                (groom)
 import           Text.Pandoc.Readers.LaTeX (handleIncludes)
 

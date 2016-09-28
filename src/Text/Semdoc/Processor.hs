@@ -10,7 +10,8 @@ import           Text.Pandoc.Error          (PandocError)
 import           Text.Pandoc.Walk           (walk, walkM)
 
 import           Text.Semdoc.EvalExpr       (evalExpr)
-import           Text.Semdoc.InlineHaskell  (extractExprs, replaceExprs)
+import           Text.Semdoc.InlineHaskell  (Input (Input), extractExprs,
+                                             replaceExprs)
 
 
 readerOpts :: Pandoc.ReaderOptions
@@ -41,7 +42,7 @@ processDoc :: Pandoc.Pandoc -> IO String
 processDoc doc@(Pandoc.Pandoc _ parsed) = do
   putStrLn $ "[=] processing " ++ show (length parsed) ++ " toplevel blocks"
   --putStrLn $ groom parsed
-  let (exprsBlock, exprsInline, _) = snd . CMS.runState (walkM extractExprs doc) $ ([], [], "Prelude")
+  let Input exprsBlock exprsInline _ _ = snd . CMS.runState (walkM extractExprs doc) $ Pandoc.def
   putStrLn $ "[=] evaluating " ++ show (length exprsBlock) ++ " block expressions"
   resultsBlock <- evalExpr exprsBlock
   putStrLn $ "[=] evaluating " ++ show (length exprsInline) ++ " inline expressions"

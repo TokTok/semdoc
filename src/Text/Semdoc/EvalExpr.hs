@@ -1,6 +1,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 module Text.Semdoc.EvalExpr where
 
+import           Control.Applicative  ((<$>))
 import           Control.Monad        (join)
 import           Control.Monad.Trans  (MonadIO, liftIO)
 import           Debugger             (showTerm)
@@ -70,7 +71,7 @@ evalOne EvalInput { inputModule, inputStmts } = do
     mkImportDecl (m, n) =
       IIDecl (simpleImportDecl $ mkModuleName m)
         { ideclAs = fmap mkModuleName n
-        , ideclQualified = not $ null n
+        , ideclQualified = n /= Nothing
         }
 
 

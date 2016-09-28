@@ -1,6 +1,7 @@
 module Text.Semdoc.InlineHaskell where
 
 import qualified Control.Monad.State.Strict as CMS
+import           Data.Default.Class         (Default (..))
 import           Text.Groom                 (groom)
 import           Text.Pandoc                (Block (..), Format (..),
                                              Inline (..))
@@ -10,7 +11,23 @@ import           Text.Regex.TDFA            ((=~))
 import           Text.Semdoc.EvalExpr       (EvalInput (..))
 
 
-extractExprsInline :: Inline -> CMS.State ([EvalInput Block], [EvalInput Inline], String) Inline
+data Input = Input
+  { inputsBlock   :: [EvalInput Block]
+  , inputsInline  :: [EvalInput Inline]
+  , currentModule :: String
+  , allModules    :: [String]
+  }
+
+instance Default Input where
+  def = Input
+    { inputsBlock   = []
+    , inputsInline  = []
+    , currentModule = "Prelude"
+    , allModules    = []
+    }
+
+
+extractExprsInline :: Inline -> CMS.State Input Inline
 extractExprsInline i =
   case i of
     RawInline (Format "latex") ('\\':'s':'h':'o':'w':'{':expr) -> doExtract expr
@@ -18,18 +35,18 @@ extractExprsInline i =
     _                                                          -> return i
 
   where
-    doExtract :: String -> CMS.State ([EvalInput Block], [EvalInput Inline], String) Inline
+    doExtract :: String -> CMS.State Input Inline
     doExtract expr = do
-      (inputsBlock, inputsInline, modName) <- CMS.get
-      CMS.put
-        ( inputsBlock
-        , EvalInput modName ("it = " ++ init expr) : inputsInline
-        , modName
-        )
+      let stmt = "it = " ++ init expr
+      input <- CMS.get
+      CMS.put input
+        { inputsInline =
+            EvalInput (currentModule input) stmt : inputsInline input
+        }
       return i
 
 
-extractExprs :: Block -> CMS.State ([EvalInput Block], [EvalInput Inline], String) Block
+extractExprs :: Block -> CMS.State Input Block
 extractExprs i =
   case i of
     CodeBlock ("", [], [("semdoc", "")]) code ->
@@ -37,8 +54,11 @@ extractExprs i =
     CodeBlock ("", ["sourceCode", "literate", "haskell"], []) code ->
       case code =~ "module ([A-Z][A-Za-z0-9_.]+)" of
         [[_, modName]] -> do
-          (inputBlock, inputsInline, _) <- CMS.get
-          CMS.put (inputBlock, inputsInline, modName)
+          input <- CMS.get
+          CMS.put input
+            { currentModule = modName
+            , allModules    = modName : allModules input
+            }
           return i
         _ ->
           return i
@@ -52,14 +72,13 @@ extractExprs i =
     _              -> error $ groom i
 
   where
-    doExtract :: String -> CMS.State ([EvalInput Block], [EvalInput Inline], String) Block
+    doExtract :: String -> CMS.State Input Block
     doExtract stmt = do
-      (inputsBlock, inputsInline, modName) <- CMS.get
-      CMS.put
-        ( EvalInput modName stmt : inputsBlock
-        , inputsInline
-        , modName
-        )
+      input <- CMS.get
+      CMS.put input
+        { inputsBlock =
+            EvalInput (currentModule input) stmt : inputsBlock input
+        }
       return i
 
 
