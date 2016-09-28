@@ -1,5 +1,5 @@
 {-# LANGUAGE NamedFieldPuns #-}
-module EvalExpr where
+module Text.Semdoc.EvalExpr where
 
 import           Control.Monad        (join)
 import           Control.Monad.Trans  (MonadIO, liftIO)
@@ -13,7 +13,7 @@ import           Packages             (initPackages)
 import           System.FilePath.Glob (glob)
 
 
-data EvalInput = EvalInput
+data EvalInput a = EvalInput
   { inputModule :: String
   , inputStmts  :: String
   }
@@ -30,7 +30,7 @@ addPkgDbs fps = do
   return ()
 
 
-evalExpr :: Read a => [EvalInput] -> IO [a]
+evalExpr :: Read a => [EvalInput a] -> IO [a]
 evalExpr exprs = do
   pkgDbs <- join <$> mapM glob
     [ "dist/package.conf.inplace"
@@ -50,25 +50,37 @@ evalExpr exprs = do
     mapM evalOne exprs
 
 
-evalOne :: (Read a, GhcMonad m) => EvalInput -> m a
+evalOne :: (Read a, GhcMonad m) => EvalInput a -> m a
 evalOne EvalInput { inputModule, inputStmts } = do
-  setContext $ map (IIDecl . simpleImportDecl . mkModuleName)
-    [ "Prelude"
-    , "Text.Pandoc"
-    , "Text.Printf"
-    , inputModule
+  setContext $ map mkImportDecl
+    [ ("Data.Char"       , Just "Char")
+    , ("Data.List"       , Just "List")
+    , ("Prelude"         , Nothing)
+    , ("Text.Pandoc"     , Nothing)
+    , ("Text.Printf"     , Nothing)
+    , ("Text.Semdoc.Util", Nothing)
+    , (inputModule       , Nothing)
     ]
-  ns <- runDecls inputStmts
+  ns <- reverse <$> runDecls inputStmts
   case ns of
     n:_ -> getResult n
     _   -> fail "no declarations found"
+
+  where
+    mkImportDecl (m, n) =
+      IIDecl (simpleImportDecl $ mkModuleName m)
+        { ideclAs = fmap mkModuleName n
+        , ideclQualified = not $ null n
+        }
 
 
 getResult :: (Read a, GhcMonad m) => Name -> m a
 getResult n = do
   df <- getSessionDynFlags
   Just (AnId aid) <- lookupName n
-  fmap (read . pp df) $ showTerm =<< obtainTermFromId maxBound True aid
+  result <- fmap (pp df) $ showTerm =<< obtainTermFromId maxBound True aid
+  --liftIO $ putStrLn result
+  return $ read result
 
   where
     pp df = showSDocForUser df neverQualify

@@ -10,12 +10,21 @@ category:            Development
 build-type:          Simple
 cabal-version:       >=1.10
 
-executable semdoc
-  main-is:             Main.hs
+library
+  default-language: Haskell2010
   ghc-options:
       -Wall
+  hs-source-dirs:
+      src
+  exposed-modules:
+      Text.Semdoc
+      Text.Semdoc.EvalExpr
+      Text.Semdoc.IO
+      Text.Semdoc.InlineHaskell
+      Text.Semdoc.Processor
+      Text.Semdoc.Util
   build-depends:
-      base            >= 4 && < 5
+      base < 5
     , Glob
     , containers
     , ghc             == 7.10.3
@@ -25,5 +34,13 @@ executable semdoc
     , pandoc          >= 1.17
     , pandoc-types
     , regex-tdfa
-  hs-source-dirs:      src
+
+executable semdoc
+  main-is:             semdoc.hs
+  ghc-options:
+      -Wall
+  build-depends:
+      base            >= 4 && < 5
+    , semdoc
+  hs-source-dirs:      tools
   default-language:    Haskell2010
