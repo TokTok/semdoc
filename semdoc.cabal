@@ -1,6 +1,7 @@
 name:                semdoc
-version:             0.1.0
+version:             0.1.1
 synopsis:            Evaluate code snippets in Literate Haskell.
+description:         Evaluate code snippets in Literate Haskell.
 homepage:            https://toktok.github.io/semdoc
 license:             AGPL-3
 license-file:        LICENSE
@@ -9,6 +10,10 @@ maintainer:          iphydf@users.noreply.github.com
 category:            Development
 build-type:          Simple
 cabal-version:       >=1.10
+
+source-repository head
+  type: git
+  location: https://github.com/TokTok/semdoc
 
 library
   default-language: Haskell2010
@@ -33,7 +38,7 @@ library
     , ghc-paths
     , groom
     , mtl
-    , pandoc          >= 1.17
+    , pandoc          >= 1.16
     , pandoc-types
     , regex-tdfa
 
