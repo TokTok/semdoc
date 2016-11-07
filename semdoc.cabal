@@ -1,5 +1,5 @@
 name:                semdoc
-version:             0.1.1
+version:             0.1.2
 synopsis:            Evaluate code snippets in Literate Haskell.
 description:         Evaluate code snippets in Literate Haskell.
 homepage:            https://toktok.github.io/semdoc
@@ -38,8 +38,8 @@ library
     , ghc-paths
     , groom
     , mtl
-    , pandoc          >= 1.16
-    , pandoc-types
+    , pandoc          >= 1.7
+    , pandoc-types    <= 1.16
     , regex-tdfa
 
 executable semdoc
