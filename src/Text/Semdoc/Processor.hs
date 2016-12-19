@@ -33,8 +33,7 @@ semdocExtensions =
 
 
 eraseCodeBlocks :: Block -> Block
-eraseCodeBlocks (CodeBlock ("", ["sourceCode", "literate", "haskell"], []) _) =
-  Null
+eraseCodeBlocks (CodeBlock ("", ["sourceCode", "literate", "haskell"], []) _) = Null
 eraseCodeBlocks x = x
 
 

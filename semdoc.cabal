@@ -39,7 +39,9 @@ library
     , ghc-paths
     , groom
     , mtl
-    , pandoc                    >= 1.7
+    -- pandoc < 1.16 doesn't write tables in Markdown correctly and doesn't
+    -- respect the 'no-tex-ligatures' option in Markdown.
+    , pandoc                    >= 1.16
     -- pandoc-types-1.17 fails to resolve dependencies correctly.
     , pandoc-types              <= 1.16
     , regex-tdfa
