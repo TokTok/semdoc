@@ -9,12 +9,12 @@ splitR p s =
   let
     go :: Char -> String -> [String]
     go m s' = case break p s' of
-      (b', [])     -> [ m:b' ]
-      (b', (x:xs)) -> ( m:b' ) : go x xs
+      (b', [])   -> [m:b']
+      (b', x:xs) -> (m:b') : go x xs
   in case break p s of
-    (b,  [])    -> [ b ]
-    ([], (h:t)) -> go h t
-    (b,  (h:t)) -> b : go h t
+    (b,  [])  -> [b]
+    ([], h:t) -> go h t
+    (b,  h:t) -> b : go h t
 
 
 splitCamel :: String -> [String]

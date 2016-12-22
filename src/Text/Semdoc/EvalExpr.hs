@@ -3,6 +3,7 @@ module Text.Semdoc.EvalExpr where
 
 import           Control.Applicative  ((<$>))
 import           Control.Monad        (join)
+import qualified Data.Maybe           as Maybe
 import           Debugger             (showTerm)
 import           DynFlags             (ExtensionFlag (..), PkgConfRef (..),
                                        xopt_set)
@@ -71,7 +72,7 @@ evalOne EvalInput { inputModule, inputStmts } = do
     mkImportDecl (m, n) =
       IIDecl (simpleImportDecl $ mkModuleName m)
         { ideclAs = fmap mkModuleName n
-        , ideclQualified = n /= Nothing
+        , ideclQualified = Maybe.isJust n
         }
 
 
