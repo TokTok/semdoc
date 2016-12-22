@@ -1,0 +1,6 @@
+inherits: haskell
+sudo: required
+
+package:
+  name: semdoc
+  version: 0.1.2
