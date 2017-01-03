@@ -42,8 +42,8 @@ library
     -- pandoc < 1.16 doesn't write tables in Markdown correctly and doesn't
     -- respect the 'no-tex-ligatures' option in Markdown.
     , pandoc                    >= 1.16
-    -- pandoc-types-1.17 fails to resolve dependencies correctly.
-    , pandoc-types              <= 1.16
+    -- pandoc-types 1.17 depends on aeson 1.1, which requires ghc > 7.8.4.
+    , pandoc-types              <  1.17
     , regex-tdfa
 
 executable semdoc
