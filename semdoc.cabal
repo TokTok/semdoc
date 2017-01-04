@@ -1,5 +1,5 @@
 name:                semdoc
-version:             0.1.2
+version:             0.1.3
 synopsis:            Evaluate code snippets in Literate Haskell.
 description:         Evaluate code snippets in Literate Haskell.
 homepage:            https://toktok.github.io/semdoc
