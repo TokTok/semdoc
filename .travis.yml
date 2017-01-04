@@ -13,7 +13,7 @@ addons:
 after_script:
 - rm -f $HOME/.cabal && ln -s $HOME/.cabal-tools $HOME/.cabal
 - rm -f $HOME/.ghc && ln -s $HOME/.ghc-tools $HOME/.ghc
-- hpc-coveralls semdoc-0.1.2
+- hpc-coveralls semdoc-0.1.3
 branches:
   only:
   - master
