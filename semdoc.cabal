@@ -4,7 +4,7 @@ synopsis:            Evaluate code snippets in Literate Haskell.
 description:         Evaluate code snippets in Literate Haskell.
 homepage:            https://toktok.github.io/semdoc
 license:             AGPL-3
-license-file:        LICENSE
+license-file:        LICENSE.md
 author:              iphydf
 maintainer:          iphydf@users.noreply.github.com
 category:            Development
